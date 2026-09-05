@@ -1,0 +1,631 @@
+{
+  "k": 10,
+  "queries": 32,
+  "embed_model": "BAAI/bge-base-en-v1.5",
+  "rerank_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "candidate_k": 100,
+  "rerank_depth": 50,
+  "rrf_k": 60,
+  "systems": [
+    {
+      "mode": "bm25",
+      "label": "BM25 (Elasticsearch)",
+      "ndcg_at_k": 0.5205,
+      "recall_at_k": 0.2355,
+      "latency_p50_ms": 12.2,
+      "latency_p95_ms": 30.0,
+      "by_family": {
+        "lexical": {
+          "ndcg": 0.7027,
+          "recall": 0.2935,
+          "queries": 13
+        },
+        "mixed": {
+          "ndcg": 0.5028,
+          "recall": 0.2196,
+          "queries": 13
+        },
+        "semantic": {
+          "ndcg": 0.164,
+          "recall": 0.1441,
+          "queries": 6
+        }
+      },
+      "per_query": {
+        "q01": {
+          "ndcg": 0.745,
+          "recall": 0.2703
+        },
+        "q02": {
+          "ndcg": 0.7512,
+          "recall": 0.3333
+        },
+        "q03": {
+          "ndcg": 0.8236,
+          "recall": 0.36
+        },
+        "q04": {
+          "ndcg": 0.7927,
+          "recall": 0.303
+        },
+        "q05": {
+          "ndcg": 0.6126,
+          "recall": 0.36
+        },
+        "q06": {
+          "ndcg": 0.1595,
+          "recall": 0.1579
+        },
+        "q07": {
+          "ndcg": 0.4697,
+          "recall": 0.1562
+        },
+        "q08": {
+          "ndcg": 0.5648,
+          "recall": 0.225
+        },
+        "q09": {
+          "ndcg": 0.0958,
+          "recall": 0.1333
+        },
+        "q10": {
+          "ndcg": 0.5573,
+          "recall": 0.2581
+        },
+        "q11": {
+          "ndcg": 0.6541,
+          "recall": 0.2667
+        },
+        "q12": {
+          "ndcg": 0.9513,
+          "recall": 0.3333
+        },
+        "q13": {
+          "ndcg": 0.4634,
+          "recall": 0.1944
+        },
+        "q14": {
+          "ndcg": 0.7333,
+          "recall": 0.3
+        },
+        "q15": {
+          "ndcg": 0.6003,
+          "recall": 0.1389
+        },
+        "q16": {
+          "ndcg": 0.5735,
+          "recall": 0.2432
+        },
+        "q17": {
+          "ndcg": 0.2736,
+          "recall": 0.1081
+        },
+        "q18": {
+          "ndcg": 0.5971,
+          "recall": 0.2368
+        },
+        "q19": {
+          "ndcg": 0.6378,
+          "recall": 0.225
+        },
+        "q20": {
+          "ndcg": 0.3808,
+          "recall": 0.2188
+        },
+        "q21": {
+          "ndcg": 0.9603,
+          "recall": 0.2703
+        },
+        "q22": {
+          "ndcg": 0.5913,
+          "recall": 0.2778
+        },
+        "q23": {
+          "ndcg": 0.3965,
+          "recall": 0.2424
+        },
+        "q24": {
+          "ndcg": 0.7366,
+          "recall": 0.2941
+        },
+        "q25": {
+          "ndcg": 0.1449,
+          "recall": 0.2105
+        },
+        "q26": {
+          "ndcg": 0.051,
+          "recall": 0.0833
+        },
+        "q27": {
+          "ndcg": 0.9117,
+          "recall": 0.3448
+        },
+        "q28": {
+          "ndcg": 0.2894,
+          "recall": 0.2414
+        },
+        "q29": {
+          "ndcg": 0.4588,
+          "recall": 0.2581
+        },
+        "q30": {
+          "ndcg": 0.2294,
+          "recall": 0.1481
+        },
+        "q31": {
+          "ndcg": 0.3175,
+          "recall": 0.1951
+        },
+        "q32": {
+          "ndcg": 0.1305,
+          "recall": 0.1471
+        }
+      }
+    },
+    {
+      "mode": "dense",
+      "label": "Dense (bge-base + FAISS)",
+      "ndcg_at_k": 0.7087,
+      "recall_at_k": 0.289,
+      "latency_p50_ms": 13.5,
+      "latency_p95_ms": 99.8,
+      "by_family": {
+        "lexical": {
+          "ndcg": 0.7784,
+          "recall": 0.305,
+          "queries": 13
+        },
+        "mixed": {
+          "ndcg": 0.7219,
+          "recall": 0.2682,
+          "queries": 13
+        },
+        "semantic": {
+          "ndcg": 0.5289,
+          "recall": 0.2994,
+          "queries": 6
+        }
+      },
+      "per_query": {
+        "q01": {
+          "ndcg": 0.5992,
+          "recall": 0.2162
+        },
+        "q02": {
+          "ndcg": 0.7653,
+          "recall": 0.3
+        },
+        "q03": {
+          "ndcg": 0.81,
+          "recall": 0.36
+        },
+        "q04": {
+          "ndcg": 0.6656,
+          "recall": 0.303
+        },
+        "q05": {
+          "ndcg": 0.7572,
+          "recall": 0.36
+        },
+        "q06": {
+          "ndcg": 0.4964,
+          "recall": 0.4211
+        },
+        "q07": {
+          "ndcg": 0.7682,
+          "recall": 0.3125
+        },
+        "q08": {
+          "ndcg": 0.7892,
+          "recall": 0.25
+        },
+        "q09": {
+          "ndcg": 0.1256,
+          "recall": 0.2
+        },
+        "q10": {
+          "ndcg": 0.6748,
+          "recall": 0.2258
+        },
+        "q11": {
+          "ndcg": 0.5705,
+          "recall": 0.3
+        },
+        "q12": {
+          "ndcg": 0.8993,
+          "recall": 0.3333
+        },
+        "q13": {
+          "ndcg": 0.8607,
+          "recall": 0.2778
+        },
+        "q14": {
+          "ndcg": 0.6831,
+          "recall": 0.3
+        },
+        "q15": {
+          "ndcg": 0.8568,
+          "recall": 0.2778
+        },
+        "q16": {
+          "ndcg": 0.6868,
+          "recall": 0.2703
+        },
+        "q17": {
+          "ndcg": 0.8621,
+          "recall": 0.2703
+        },
+        "q18": {
+          "ndcg": 0.7594,
+          "recall": 0.2632
+        },
+        "q19": {
+          "ndcg": 0.8317,
+          "recall": 0.25
+        },
+        "q20": {
+          "ndcg": 0.6893,
+          "recall": 0.3125
+        },
+        "q21": {
+          "ndcg": 0.7647,
+          "recall": 0.2703
+        },
+        "q22": {
+          "ndcg": 0.8132,
+          "recall": 0.2778
+        },
+        "q23": {
+          "ndcg": 0.4418,
+          "recall": 0.2424
+        },
+        "q24": {
+          "ndcg": 0.7849,
+          "recall": 0.2647
+        },
+        "q25": {
+          "ndcg": 0.6499,
+          "recall": 0.2368
+        },
+        "q26": {
+          "ndcg": 0.5792,
+          "recall": 0.3333
+        },
+        "q27": {
+          "ndcg": 0.8886,
+          "recall": 0.3103
+        },
+        "q28": {
+          "ndcg": 0.7799,
+          "recall": 0.3448
+        },
+        "q29": {
+          "ndcg": 0.8518,
+          "recall": 0.3226
+        },
+        "q30": {
+          "ndcg": 0.7473,
+          "recall": 0.3333
+        },
+        "q31": {
+          "ndcg": 0.7623,
+          "recall": 0.2439
+        },
+        "q32": {
+          "ndcg": 0.4629,
+          "recall": 0.2647
+        }
+      }
+    },
+    {
+      "mode": "hybrid",
+      "label": "Hybrid (RRF)",
+      "ndcg_at_k": 0.7267,
+      "recall_at_k": 0.2936,
+      "latency_p50_ms": 35.4,
+      "latency_p95_ms": 48.3,
+      "by_family": {
+        "lexical": {
+          "ndcg": 0.8087,
+          "recall": 0.3187,
+          "queries": 13
+        },
+        "mixed": {
+          "ndcg": 0.7526,
+          "recall": 0.2848,
+          "queries": 13
+        },
+        "semantic": {
+          "ndcg": 0.4932,
+          "recall": 0.2581,
+          "queries": 6
+        }
+      },
+      "per_query": {
+        "q01": {
+          "ndcg": 0.7269,
+          "recall": 0.2703
+        },
+        "q02": {
+          "ndcg": 0.7801,
+          "recall": 0.3333
+        },
+        "q03": {
+          "ndcg": 0.901,
+          "recall": 0.4
+        },
+        "q04": {
+          "ndcg": 0.7473,
+          "recall": 0.303
+        },
+        "q05": {
+          "ndcg": 0.8109,
+          "recall": 0.4
+        },
+        "q06": {
+          "ndcg": 0.3161,
+          "recall": 0.2105
+        },
+        "q07": {
+          "ndcg": 0.8428,
+          "recall": 0.3125
+        },
+        "q08": {
+          "ndcg": 0.7692,
+          "recall": 0.225
+        },
+        "q09": {
+          "ndcg": 0.0549,
+          "recall": 0.1333
+        },
+        "q10": {
+          "ndcg": 0.8709,
+          "recall": 0.3226
+        },
+        "q11": {
+          "ndcg": 0.6239,
+          "recall": 0.3
+        },
+        "q12": {
+          "ndcg": 0.9621,
+          "recall": 0.3333
+        },
+        "q13": {
+          "ndcg": 0.7719,
+          "recall": 0.2778
+        },
+        "q14": {
+          "ndcg": 0.7611,
+          "recall": 0.3333
+        },
+        "q15": {
+          "ndcg": 0.8702,
+          "recall": 0.2778
+        },
+        "q16": {
+          "ndcg": 0.8107,
+          "recall": 0.2703
+        },
+        "q17": {
+          "ndcg": 0.748,
+          "recall": 0.2703
+        },
+        "q18": {
+          "ndcg": 0.6918,
+          "recall": 0.2632
+        },
+        "q19": {
+          "ndcg": 0.8176,
+          "recall": 0.25
+        },
+        "q20": {
+          "ndcg": 0.6711,
+          "recall": 0.3125
+        },
+        "q21": {
+          "ndcg": 0.9455,
+          "recall": 0.2703
+        },
+        "q22": {
+          "ndcg": 0.7924,
+          "recall": 0.2778
+        },
+        "q23": {
+          "ndcg": 0.4233,
+          "recall": 0.2727
+        },
+        "q24": {
+          "ndcg": 0.891,
+          "recall": 0.2941
+        },
+        "q25": {
+          "ndcg": 0.7088,
+          "recall": 0.2632
+        },
+        "q26": {
+          "ndcg": 0.6188,
+          "recall": 0.3333
+        },
+        "q27": {
+          "ndcg": 0.8679,
+          "recall": 0.3448
+        },
+        "q28": {
+          "ndcg": 0.7269,
+          "recall": 0.3448
+        },
+        "q29": {
+          "ndcg": 0.7631,
+          "recall": 0.3226
+        },
+        "q30": {
+          "ndcg": 0.6962,
+          "recall": 0.3333
+        },
+        "q31": {
+          "ndcg": 0.6667,
+          "recall": 0.2439
+        },
+        "q32": {
+          "ndcg": 0.6063,
+          "recall": 0.2941
+        }
+      }
+    },
+    {
+      "mode": "hybrid_rerank",
+      "label": "Hybrid + cross-encoder rerank",
+      "ndcg_at_k": 0.7322,
+      "recall_at_k": 0.293,
+      "latency_p50_ms": 698.3,
+      "latency_p95_ms": 2266.1,
+      "by_family": {
+        "lexical": {
+          "ndcg": 0.7927,
+          "recall": 0.3165,
+          "queries": 13
+        },
+        "mixed": {
+          "ndcg": 0.804,
+          "recall": 0.2828,
+          "queries": 13
+        },
+        "semantic": {
+          "ndcg": 0.4455,
+          "recall": 0.2642,
+          "queries": 6
+        }
+      },
+      "per_query": {
+        "q01": {
+          "ndcg": 0.8968,
+          "recall": 0.2703
+        },
+        "q02": {
+          "ndcg": 0.8946,
+          "recall": 0.3333
+        },
+        "q03": {
+          "ndcg": 0.9188,
+          "recall": 0.4
+        },
+        "q04": {
+          "ndcg": 0.5047,
+          "recall": 0.303
+        },
+        "q05": {
+          "ndcg": 0.8731,
+          "recall": 0.4
+        },
+        "q06": {
+          "ndcg": 0.3093,
+          "recall": 0.2632
+        },
+        "q07": {
+          "ndcg": 0.6975,
+          "recall": 0.3125
+        },
+        "q08": {
+          "ndcg": 0.8151,
+          "recall": 0.225
+        },
+        "q09": {
+          "ndcg": 0.2818,
+          "recall": 0.3333
+        },
+        "q10": {
+          "ndcg": 0.9113,
+          "recall": 0.3226
+        },
+        "q11": {
+          "ndcg": 0.63,
+          "recall": 0.3
+        },
+        "q12": {
+          "ndcg": 1.0,
+          "recall": 0.3333
+        },
+        "q13": {
+          "ndcg": 0.6328,
+          "recall": 0.25
+        },
+        "q14": {
+          "ndcg": 0.9007,
+          "recall": 0.3333
+        },
+        "q15": {
+          "ndcg": 0.8754,
+          "recall": 0.2778
+        },
+        "q16": {
+          "ndcg": 0.8302,
+          "recall": 0.2703
+        },
+        "q17": {
+          "ndcg": 0.8742,
+          "recall": 0.2703
+        },
+        "q18": {
+          "ndcg": 0.6037,
+          "recall": 0.2632
+        },
+        "q19": {
+          "ndcg": 0.8201,
+          "recall": 0.25
+        },
+        "q20": {
+          "ndcg": 0.7775,
+          "recall": 0.3125
+        },
+        "q21": {
+          "ndcg": 0.9603,
+          "recall": 0.2703
+        },
+        "q22": {
+          "ndcg": 0.7845,
+          "recall": 0.2778
+        },
+        "q23": {
+          "ndcg": 0.6801,
+          "recall": 0.2727
+        },
+        "q24": {
+          "ndcg": 0.7357,
+          "recall": 0.2941
+        },
+        "q25": {
+          "ndcg": 0.7393,
+          "recall": 0.2368
+        },
+        "q26": {
+          "ndcg": 0.5155,
+          "recall": 0.2083
+        },
+        "q27": {
+          "ndcg": 0.8787,
+          "recall": 0.3448
+        },
+        "q28": {
+          "ndcg": 0.8885,
+          "recall": 0.3448
+        },
+        "q29": {
+          "ndcg": 0.6338,
+          "recall": 0.3226
+        },
+        "q30": {
+          "ndcg": 0.5255,
+          "recall": 0.2963
+        },
+        "q31": {
+          "ndcg": 0.686,
+          "recall": 0.2195
+        },
+        "q32": {
+          "ndcg": 0.3549,
+          "recall": 0.2647
+        }
+      }
+    }
+  ]
+}
