@@ -1,0 +1,15 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+elasticsearch==8.17.0
+redis==5.2.1
+
+sentence-transformers==3.3.1
+faiss-cpu==1.9.0.post1
+torch==2.5.1
+numpy==1.26.4
+
+requests==2.32.3
+tqdm==4.67.1

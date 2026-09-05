@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+.env
+
+# Rebuilt deterministically from the corpus by scripts/build_index.py.
+data/index/
+
+# The corpus and the judgement pool ARE committed. scripts/fetch_corpus.py pulls
+# arXiv sorted by submission date, so re-running it returns a different snapshot —
+# the relevance judgements in data/eval/qrels.json reference these exact document
+# ids, and without the snapshot none of the reported numbers can be reproduced.
+
+.DS_Store
+.idea/

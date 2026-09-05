@@ -1,0 +1,31 @@
+[project]
+name = "hybrid-search"
+version = "1.0.0"
+description = "Hybrid BM25 + dense retrieval with RRF fusion, cross-encoder reranking, and an evaluation harness"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+# Deprecation noise from starlette's anyio usage and faiss's SWIG bindings —
+# neither is actionable from this codebase.
+filterwarnings = [
+    "ignore::DeprecationWarning:starlette.*",
+    "ignore:builtin type Swig.* has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 95
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# B008 forbids function calls in argument defaults, which is exactly how
+# FastAPI's Depends()/Query() are meant to be used.
+ignore = ["B008"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/api/main.py"]
