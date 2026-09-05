@@ -72,10 +72,11 @@ def test_search_returns_hits():
     assert body["took_ms"] >= 0
 
 
-def test_search_defaults_to_the_full_pipeline():
+def test_search_defaults_to_fusion_without_reranking():
+    """Reranking costs ~20x latency for under 1% nDCG, so it is opt-in."""
     service = StubService()
     make_client(service).get("/search", params={"q": "retrieval"})
-    assert service.calls == [("retrieval", SearchMode.HYBRID_RERANK, 10)]
+    assert service.calls == [("retrieval", SearchMode.HYBRID, 10)]
 
 
 @pytest.mark.parametrize("mode", [m.value for m in SearchMode])

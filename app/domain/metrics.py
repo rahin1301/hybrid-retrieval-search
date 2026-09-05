@@ -10,7 +10,7 @@ Standard TREC-style definitions:
   order scores exactly 1.0.
 
 Unjudged documents are treated as non-relevant, which is the usual convention
-for a small hand-labelled pool. The evaluation README notes the bias this
+for a small graded pool. The evaluation README notes the bias this
 introduces: systems that surface unjudged-but-relevant documents are penalised.
 """
 

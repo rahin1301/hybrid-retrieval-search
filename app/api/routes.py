@@ -28,9 +28,10 @@ def health(service: SearchService = Depends(get_search_service)) -> dict:
 @router.get("/search", response_model=SearchResponse, tags=["search"])
 def search(
     q: str = Query(..., min_length=1, max_length=512, description="Search query"),
-    mode: SearchMode = Query(
-        SearchMode.HYBRID_RERANK, description="Retrieval strategy"
-    ),
+    # Fusion is the default rather than hybrid_rerank: reranking measured at
+    # +0.8% nDCG@10 for ~20x the median latency, which is not a trade worth
+    # making by default. It stays available per-request.
+    mode: SearchMode = Query(SearchMode.HYBRID, description="Retrieval strategy"),
     k: int = Query(10, ge=1, le=100, description="Number of results"),
     service: SearchService = Depends(get_search_service),
 ) -> SearchResponse:

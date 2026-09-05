@@ -1,4 +1,4 @@
-"""Evaluate every retrieval mode against the hand-labelled judgements.
+"""Evaluate every retrieval mode against the graded relevance judgements.
 
 Reports nDCG@10 and Recall@10 per system, overall and broken down by query
 family, plus median and p95 latency. Caching is disabled so latency reflects

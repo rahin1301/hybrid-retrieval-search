@@ -1,7 +1,7 @@
 # Hybrid Retrieval Search
 
 Search over 5,607 arXiv CS abstracts, comparing four retrieval strategies against 1,316
-hand-labelled relevance judgements: **BM25**, **dense**, **hybrid (RRF)**, and
+graded relevance judgements: **BM25**, **dense**, **hybrid (RRF)**, and
 **hybrid + cross-encoder reranking**.
 
 The point of the project is not that hybrid search works — it is *measuring* how much it
@@ -16,8 +16,14 @@ with one command.
 | --- | --- | --- | --- | --- |
 | BM25 (Elasticsearch) | 0.5205 | 0.2355 | 12 ms | 30 ms |
 | Dense (bge-base-en-v1.5 + FAISS) | 0.7087 (+36.2%) | 0.2890 | 13 ms | 100 ms |
-| Hybrid (RRF) | **0.7267** (+39.6%) | **0.2936** | 35 ms | 48 ms |
-| Hybrid + cross-encoder rerank | **0.7322** (+40.7%) | 0.2930 | 698 ms | 2266 ms |
+| **Hybrid (RRF)** — *default* | **0.7267** (+39.6%) | **0.2936** | **35 ms** | 48 ms |
+| Hybrid + cross-encoder rerank | 0.7322 (+40.7%) | 0.2930 | 698 ms | 2266 ms |
+
+**Hybrid RRF is the default the API ships with.** Reranking scores marginally higher
+(+0.8% nDCG@10) but costs **~20× the median latency** — 35 ms to 698 ms — and at 32
+queries that 0.8% is inside the noise. Paying 20× for a difference the harness cannot
+reliably measure is not a trade worth making, so reranking stays available per request
+(`?mode=hybrid_rerank`) rather than on by default.
 
 > **Reading Recall@10.** There are ~32 relevant documents per query but only 10 result
 > slots, so the highest achievable Recall@10 is **0.327**. Hybrid reaches 0.294 — about
@@ -220,7 +226,8 @@ uvicorn app.api.main:app --reload
 ```
 
 ```bash
-curl "http://localhost:8000/search?q=cross+encoder+reranking&mode=hybrid_rerank&k=5"
+# Defaults to hybrid RRF; add &mode=hybrid_rerank to opt into reranking.
+curl "http://localhost:8000/search?q=cross+encoder+reranking&k=5"
 ```
 
 Interactive docs at http://localhost:8000/docs.
