@@ -23,9 +23,16 @@ with one command.
 > slots, so the highest achievable Recall@10 is **0.327**. Hybrid reaches 0.294 — about
 > 90% of the ceiling. Absolute recall looks low; relative to what is attainable it is not.
 
+> **Reading the latency columns.** Quote the p50, not the p95. With 32 queries the p95 is
+> the 30th–31st sorted value — effectively a single observation, and one slow query moves
+> it by tens of milliseconds. Across five warm repeat runs, hybrid p50 stayed at 25–27 ms
+> while its p95 swung between 29 ms and 64 ms. The p95 column is reported for completeness,
+> but only the p50 is stable enough to compare systems on. Measured on an M-series laptop
+> with Elasticsearch and Redis in Docker; treat these as relative, not absolute.
+
 ### Where each system actually wins
 
-| System | lexical | mixed | semantic |
+| System | lexical (n=13) | mixed (n=13) | semantic (n=6) |
 | --- | --- | --- | --- |
 | BM25 | 0.7027 | 0.5028 | 0.1640 |
 | Dense | 0.7784 | 0.7219 | **0.5289** |
@@ -40,6 +47,8 @@ This breakdown is the most useful table in the project, and it contradicts the a
 - **Hybrid is not uniformly better.** On semantic queries, dense alone (0.529) beats
   hybrid (0.493): equal-weight RRF lets a retriever that is near-useless on those queries
   dilute a strong one. The aggregate win comes entirely from lexical and mixed queries.
+  Note the sample size: this rests on 6 queries, so treat it as a signal worth
+  investigating rather than a settled result.
 - **Reranking pays for itself only on mixed queries** (0.752 → 0.804), and costs ~660 ms
   of p50 latency to do it. On lexical queries it is a slight net negative.
 
@@ -188,6 +197,9 @@ not — the model is trained asymmetrically.
 4. **Recent-corpus skew.** The corpus is the most recent ~5.6k papers across six CS
    categories, so it is dense in current topics (LLMs, RAG, agents) and thin elsewhere.
 5. **Judged from title and abstract**, not full text.
+6. **Tail latency is not measurable at this sample size.** 32 queries makes p95 a single
+   observation; it varies by more than 2× between identical runs. Only the p50 is quoted
+   as a comparison figure, and a real tail measurement would need thousands of queries.
 
 ## Quick start
 
