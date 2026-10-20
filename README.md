@@ -1,292 +1,181 @@
 # Hybrid Retrieval Search
 
-Search over 5,607 arXiv CS abstracts, comparing four retrieval strategies against 1,316
-graded relevance judgements: **BM25**, **dense**, **hybrid (RRF)**, and
-**hybrid + cross-encoder reranking**.
+A search API over ~5.6k arXiv CS abstracts that compares four retrieval setups:
 
-The point of the project is not that hybrid search works — it is *measuring* how much it
-works, and where. Every number below comes from `scripts/run_eval.py` and is reproducible
-with one command.
+1. BM25 (Elasticsearch)
+2. Dense retrieval (`bge-base-en-v1.5` + FAISS)
+3. Hybrid, using Reciprocal Rank Fusion (RRF)
+4. Hybrid + cross-encoder reranking (`ms-marco-MiniLM-L-6-v2`)
+
+The main goal was to measure how much hybrid search actually helps on a small corpus, so
+most of the work went into the evaluation harness rather than the API.
 
 ## Results
 
-32 queries, k=10, 1,316 graded judgements. Latency is measured with caching disabled.
+32 hand-written queries, 1,316 graded relevance judgements, k = 10. Caching was off for
+the latency numbers.
 
-| System | nDCG@10 | Recall@10 | p50 latency | p95 latency |
-| --- | --- | --- | --- | --- |
-| BM25 (Elasticsearch) | 0.5205 | 0.2355 | 12 ms | 30 ms |
-| Dense (bge-base-en-v1.5 + FAISS) | 0.7087 (+36.2%) | 0.2890 | 13 ms | 100 ms |
-| **Hybrid (RRF)** — *default* | **0.7267** (+39.6%) | **0.2936** | **35 ms** | 48 ms |
-| Hybrid + cross-encoder rerank | 0.7322 (+40.7%) | 0.2930 | 698 ms | 2266 ms |
-
-**Hybrid RRF is the default the API ships with.** Reranking scores marginally higher
-(+0.8% nDCG@10) but costs **~20× the median latency** — 35 ms to 698 ms — and at 32
-queries that 0.8% is inside the noise. Paying 20× for a difference the harness cannot
-reliably measure is not a trade worth making, so reranking stays available per request
-(`?mode=hybrid_rerank`) rather than on by default.
-
-> **Reading Recall@10.** There are ~32 relevant documents per query but only 10 result
-> slots, so the highest achievable Recall@10 is **0.327**. Hybrid reaches 0.294 — about
-> 90% of the ceiling. Absolute recall looks low; relative to what is attainable it is not.
-
-> **Reading the latency columns.** Quote the p50, not the p95. With 32 queries the p95 is
-> the 30th–31st sorted value — effectively a single observation, and one slow query moves
-> it by tens of milliseconds. Across five warm repeat runs, hybrid p50 stayed at 25–27 ms
-> while its p95 swung between 29 ms and 64 ms. The p95 column is reported for completeness,
-> but only the p50 is stable enough to compare systems on. Measured on an M-series laptop
-> with Elasticsearch and Redis in Docker; treat these as relative, not absolute.
-
-### Where each system actually wins
-
-| System | lexical (n=13) | mixed (n=13) | semantic (n=6) |
+| System | nDCG@10 | Recall@10 | p50 latency |
 | --- | --- | --- | --- |
-| BM25 | 0.7027 | 0.5028 | 0.1640 |
-| Dense | 0.7784 | 0.7219 | **0.5289** |
-| Hybrid (RRF) | **0.8087** | 0.7526 | 0.4932 |
-| Hybrid + rerank | 0.7927 | **0.8040** | 0.4455 |
+| BM25 | 0.521 | 0.236 | 12 ms |
+| Dense | 0.709 | 0.289 | 13 ms |
+| Hybrid (RRF) | 0.727 | 0.294 | 35 ms |
+| Hybrid + rerank | 0.732 | 0.293 | 698 ms |
 
-This breakdown is the most useful table in the project, and it contradicts the aggregate:
+The API defaults to hybrid RRF. Reranking is about 0.8% better on nDCG@10 but roughly 20x
+slower, and with only 32 queries that difference is within noise. You can still turn it
+on per request with `mode=hybrid_rerank`.
 
-- **BM25 collapses on paraphrase queries** (0.164). *"How to stop chatbots from leaking
-  private training data"* shares almost no vocabulary with the differential-privacy and
-  memorization papers that answer it, and lexical matching has nothing to grip.
-- **Hybrid is not uniformly better.** On semantic queries, dense alone (0.529) beats
-  hybrid (0.493): equal-weight RRF lets a retriever that is near-useless on those queries
-  dilute a strong one. The aggregate win comes entirely from lexical and mixed queries.
-  Note the sample size: this rests on 6 queries, so treat it as a signal worth
-  investigating rather than a settled result.
-- **Reranking pays for itself only on mixed queries** (0.752 → 0.804), and costs ~660 ms
-  of p50 latency to do it. On lexical queries it is a slight net negative.
+A couple of notes on reading this:
 
-The honest summary is not "hybrid + rerank is best" — it is that the right configuration
-depends on the query, and a router that sent paraphrase-style queries to dense-only would
-likely beat every fixed configuration measured here.
+- Each query has ~32 relevant documents but only 10 slots, so the best possible
+  Recall@10 is about 0.33. Hybrid gets ~90% of that.
+- Only p50 is reported. With 32 queries, p95 is basically one data point and it changed by
+  more than 2x between identical runs. Numbers are from an M-series MacBook with ES and
+  Redis running in Docker.
 
-## What the evaluation caught
+### By query type
 
-The first version of this harness reported that cross-encoder reranking **hurt** quality
-by 14% (0.709 → 0.607). Swapping in a stronger reranker (`bge-reranker-base`) made it
-worse still, which is what prompted a closer look at the harness rather than the models.
+The queries are split into three groups: `lexical` (wording likely appears in the paper),
+`semantic` (paraphrased, little word overlap), and `mixed`.
 
-The cause was pooling depth. Judgements were pooled from BM25 top-15 and dense top-15
-only. BM25 and dense are then evaluated on a pool built from their own output, but fusion
-and reranking reorder a 50-document candidate list and surface documents neither retriever
-ranked in its own top-15. Those documents were unjudged, and unjudged counts as
-non-relevant — so the systems that reached deeper were penalised for doing so:
-
-| System | share of top-10 that was unjudged |
-| --- | --- |
-| BM25 | 0% |
-| Dense | 0% |
-| Hybrid (RRF) | 11.6% |
-| Hybrid + rerank | **26.2%** |
-
-A quarter of the reranker's results were being scored as non-relevant by default. After
-re-pooling from **all four systems** at depth 20 and judging the 489 additional documents,
-the ordering became monotonic and reranking came out ahead:
-
-| | before fix | after fix |
-| --- | --- | --- |
-| Hybrid + rerank nDCG@10 | 0.6074 (−14% vs hybrid) | 0.7322 (+0.8% vs hybrid) |
-
-The measurement was wrong, not the model. `scripts/make_pool.py` now pools from every
-system under test, which is what standard TREC practice requires and what the first
-version got wrong.
-
-### Reranker choice
-
-Re-measured on the corrected pool, the larger reranker is both worse and far slower:
-
-| Reranker | params | nDCG@10 | p50 latency |
+| System | lexical (13) | mixed (13) | semantic (6) |
 | --- | --- | --- | --- |
-| `cross-encoder/ms-marco-MiniLM-L-6-v2` | 22M | **0.7322** | 698 ms |
-| `BAAI/bge-reranker-base` | 278M | 0.6779 | 2898 ms |
+| BM25 | 0.703 | 0.503 | 0.164 |
+| Dense | 0.778 | 0.722 | 0.529 |
+| Hybrid (RRF) | 0.809 | 0.753 | 0.493 |
+| Hybrid + rerank | 0.793 | 0.804 | 0.446 |
 
-Reproduce with `RERANK_MODEL=BAAI/bge-reranker-base python scripts/run_eval.py`. The
-pool was built with the MiniLM reranker, so `bge-reranker-base` carries a small residual
-version of the bias described above — but only 2.2% of its top-10 is unjudged, so the gap
-is real rather than an artefact. The bigger model is not the better one here.
+This breakdown says more than the overall table:
 
-## Architecture
+- BM25 does very badly on paraphrased queries (0.164), which is expected.
+- On semantic queries, dense alone beats hybrid. Since RRF weights both retrievers
+  equally, the weak BM25 ranking drags the dense one down. This is only 6 queries though,
+  so it's more of a hint than a solid result.
+- Reranking mostly helps on mixed queries and slightly hurts on lexical ones.
+
+So no single config wins everywhere. A simple query router (e.g. send paraphrase-like
+queries to dense only) would probably do better than any of these. That's the next thing
+to try.
+
+## A bug in the first evaluation
+
+The first run showed reranking *hurting* nDCG by 14% (0.709 → 0.607), and a bigger reranker
+made it even worse. That seemed wrong, so the eval was checked before blaming the models.
+
+The issue was the judgement pool. It only had the top 15 from BM25 and dense. Hybrid
+and reranking pull up documents from deeper in the candidate list, and those documents
+were never judged, so they counted as non-relevant. About 26% of the reranker's top 10 was
+unjudged.
+
+The fix was to pool the top 20 from all four systems (the usual TREC approach) and judge
+the 489 extra documents. After that, reranking went from 0.607 to 0.732.
+`scripts/make_pool.py` now does this by default.
+
+Two rerankers compared on the fixed pool:
+
+| Reranker | Params | nDCG@10 | p50 latency |
+| --- | --- | --- | --- |
+| `cross-encoder/ms-marco-MiniLM-L-6-v2` | 22M | 0.732 | 698 ms |
+| `BAAI/bge-reranker-base` | 278M | 0.678 | 2898 ms |
+
+The smaller model was both better and faster here. (The pool was built using MiniLM, so
+bge has a small bias against it, but only 2.2% of its top 10 was unjudged.)
+
+## How it works
 
 ```
-                         ┌──────────────────────────┐
-   query ───────────────▶│      FastAPI /search     │
-                         └────────────┬─────────────┘
-                                      │
-                        ┌─────────────▼─────────────┐
-                        │       SearchService       │
-                        └──┬────────────────────┬───┘
-                           │                    │
-              ┌────────────▼───────┐  ┌─────────▼──────────┐
-              │  Elasticsearch     │  │  FAISS IndexFlatIP │
-              │  BM25, english     │  │  bge-base-en-v1.5  │
-              │  analyzer          │  │  (cosine)          │
-              └────────────┬───────┘  └─────────┬──────────┘
-                           │  top-100           │  top-100
-                           └────────┬───────────┘
-                                    ▼
-                    ┌───────────────────────────────┐
-                    │ Reciprocal Rank Fusion (k=60) │
-                    └───────────────┬───────────────┘
-                                    │  top-50
-                                    ▼
-                    ┌───────────────────────────────┐
-                    │  Cross-encoder rerank         │
-                    │  ms-marco-MiniLM-L-6-v2       │
-                    └───────────────┬───────────────┘
-                                    ▼
-                                 top-k hits
-
-   Redis caches query embeddings and result lists; cache faults degrade
-   latency, never correctness.
+query -> FastAPI /search -> SearchService
+                              |-- Elasticsearch BM25   (top 100)
+                              |-- FAISS + bge-base     (top 100)
+                              v
+                         RRF fusion, k=60  (top 50)
+                              v
+                  cross-encoder rerank (optional)
+                              v
+                           top-k hits
 ```
 
-### Design decisions
+Redis caches query embeddings and results. If Redis is down, search still works, just slower.
 
-**Reciprocal Rank Fusion rather than score normalisation.** BM25 scores are unbounded and
-corpus-dependent; cosine similarities sit in `[-1, 1]`. Combining them by weighted sum
-needs per-corpus normalisation constants that do not transfer between queries. RRF discards
-scores and fuses on *ranks*, so it needs no tuning and cannot be destabilised by one
-retriever's score distribution. The cost is visible in the semantic column above: rank
-fusion has no way to know that BM25's ranking is worthless for that query.
+Design choices:
 
-**Cross-encoder over the top 50 only.** A bi-encoder embeds query and document
-independently and cannot model term interactions between them. A cross-encoder scores the
-pair jointly and is more accurate, but costs one forward pass per candidate — hence a
-shallow candidate set. At depth 50 that is ~660 ms of added p50 latency for +0.8% nDCG
-overall, which is a bad trade at this corpus size and a defensible one only for the mixed
-query family.
+- **RRF instead of score normalisation.** BM25 scores and cosine similarities are on
+  completely different scales. RRF only uses ranks, so there's nothing to tune.
+- **Exact FAISS index (`IndexFlatIP`).** At 5.6k docs a brute-force scan is a few ms, so
+  there's no reason to use an approximate index. Embeddings are normalised so inner
+  product = cosine.
+- **Rerank only the top 50.** The cross-encoder needs one forward pass per document, so
+  depth directly controls latency.
 
-**Exact FAISS index (`IndexFlatIP`).** At 5.6k documents an exact scan takes single-digit
-milliseconds. An approximate index (IVF/HNSW) would trade recall for a speedup that is not
-needed; the retriever interface is unchanged if the corpus grows.
+## Evaluation setup
 
-**Embeddings normalised at encode time**, so inner product equals cosine similarity and the
-index can be a plain `IndexFlatIP`. Queries carry bge's instruction prefix; documents do
-not — the model is trained asymmetrically.
-
-## Evaluation methodology
-
-- **32 queries** in three families, so the comparison is diagnostic rather than a single
-  average:
-  - `lexical` — wording likely appears verbatim in relevant papers
-    (*"parameter efficient fine tuning with low rank adaptation"*)
-  - `semantic` — paraphrase sharing little vocabulary with its relevant documents
-    (*"making neural networks smaller and cheaper to run without losing accuracy"*)
-  - `mixed` — natural phrasing, partial term overlap
-- **Pooled judgements** — every system under test contributes its top 20; the
-  de-duplicated union is judged. 1,316 judgements across 32 queries.
-- **Graded relevance**, judged from title and abstract:
-
-  | Grade | Meaning |
-  | --- | --- |
-  | 3 | Directly on topic — the paper is *about* what the query asks for |
-  | 2 | Substantially relevant — addresses the topic as a major component |
-  | 1 | Marginally relevant — related area, applies or mentions the technique |
-  | 0 | Not relevant |
-
-- **Metrics** — nDCG@10 with exponential gain (`2^rel − 1`) and log₂ discount, normalised
-  against the ideal ordering of judged documents; Recall@10 over documents graded ≥ 1.
-  Both are pure functions in `app/domain/metrics.py` with unit tests.
+- 32 queries: 13 lexical, 13 mixed, 6 semantic
+- Relevance graded 0–3 by hand, from title + abstract
+- Pool = top 20 from each of the four systems
+- nDCG@10 (gain `2^rel - 1`, log2 discount) and Recall@10 (rel ≥ 1). Both are in
+  `app/domain/metrics.py` with unit tests.
 
 ### Limitations
 
-1. **Single annotator.** No second judge, so there is no inter-annotator agreement figure.
-   The grade-1 vs grade-0 boundary is the least reliable.
-2. **Residual pooling bias.** Fixed for the four systems measured here, since all four
-   contribute to the pool. A *fifth* system could still surface relevant documents outside
-   it and be under-credited.
-3. **32 queries is small.** Enough to see the BM25-vs-dense gap (+36%); not enough for
-   significance on the hybrid-vs-rerank gap (+0.8%). Treat sub-1% differences as noise —
-   including the headline reranking win.
-4. **Recent-corpus skew.** The corpus is the most recent ~5.6k papers across six CS
-   categories, so it is dense in current topics (LLMs, RAG, agents) and thin elsewhere.
-5. **Judged from title and abstract**, not full text.
-6. **Tail latency is not measurable at this sample size.** 32 queries makes p95 a single
-   observation; it varies by more than 2× between identical runs. Only the p50 is quoted
-   as a comparison figure, and a real tail measurement would need thousands of queries.
+- Single annotator, so there's no agreement score. The line between grade 0 and 1
+  is the fuzziest.
+- 32 queries is enough to see BM25 vs dense, but not enough to say anything about
+  differences under ~1%.
+- A new system not in the pool could still be under-scored.
+- The corpus is the most recent papers in six CS categories, so it's heavy on LLM/RAG topics.
+- Judged on abstracts only, not full papers.
 
-## Quick start
+## Running it
+
+Needs Python 3.12+ and Docker.
 
 ```bash
-# 1. Infrastructure
 docker compose up -d elasticsearch redis
 
-# 2. Environment
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 
-# 3. Data and indexes  (fetch ~2 min; embedding ~15 min on CPU/MPS)
-python scripts/fetch_corpus.py
-python scripts/build_index.py
+python scripts/fetch_corpus.py    # ~2 min
+python scripts/build_index.py     # ~15 min on CPU / MPS
 
-# 4. Serve
 uvicorn app.api.main:app --reload
 ```
 
 ```bash
-# Defaults to hybrid RRF; add &mode=hybrid_rerank to opt into reranking.
 curl "http://localhost:8000/search?q=cross+encoder+reranking&k=5"
 ```
 
-Interactive docs at http://localhost:8000/docs.
+`mode` can be `bm25`, `dense`, `hybrid` (default) or `hybrid_rerank`. There's also
+`GET /health`, and Swagger docs at http://localhost:8000/docs.
 
-### Reproducing the evaluation
+To re-run the evaluation:
 
 ```bash
-python scripts/make_pool.py --depth 20   # pool from all systems under test
-python scripts/show_pool.py --unjudged   # list anything still needing a grade
-python scripts/run_eval.py               # score all four systems
+python scripts/make_pool.py --depth 20
+python scripts/show_pool.py --unjudged   # anything left to grade
+python scripts/run_eval.py               # writes data/eval/results.json and results.md
 ```
 
-`run_eval.py` writes `data/eval/results.json` (per-query scores included) and
-`data/eval/results.md`.
+Settings like `CANDIDATE_K`, `RERANK_DEPTH`, `RRF_K`, `EMBED_MODEL` and `RERANK_MODEL` can
+be changed through env variables; see `.env.example`.
 
-## API
-
-| Endpoint | Description |
-| --- | --- |
-| `GET /health` | Liveness plus the modes this instance can serve |
-| `GET /search?q=&mode=&k=` | `mode` ∈ `bm25`, `dense`, `hybrid`, `hybrid_rerank` |
-
-```json
-{
-  "query": "cross encoder reranking",
-  "mode": "hybrid_rerank",
-  "took_ms": 84.2,
-  "cached": false,
-  "hits": [{"doc_id": "2609.04083v1", "score": 8.31, "title": "...", "abstract": "..."}]
-}
-```
-
-## Layout
+## Project structure
 
 ```
 app/
-  domain/        # models, RRF, metrics, errors — pure, no I/O
-  adapters/      # Elasticsearch, FAISS, Redis, sentence-transformers
-  api/           # FastAPI routes and the composition root
-  ports.py       # Protocols the service depends on
-  service.py     # retrieval orchestration
-scripts/         # fetch_corpus, build_index, make_pool, show_pool, run_eval
-tests/           # unit tests with in-memory fakes — no infrastructure needed
+  domain/     RRF, metrics, models (no I/O)
+  adapters/   Elasticsearch, FAISS, Redis, sentence-transformers
+  api/        FastAPI routes + dependency wiring
+  ports.py    interfaces the service depends on
+  service.py  retrieval logic
+scripts/      data fetching, indexing, pooling, eval
+tests/        unit tests using in-memory fakes
 ```
 
-The service layer depends only on the protocols in `ports.py`, never on Elasticsearch,
-FAISS or Redis directly. `app/api/dependencies.py` is the single place binding a concrete
-adapter to each port, which is what lets the whole pipeline — fusion order, rerank depth,
-cache behaviour, error mapping — be tested without infrastructure:
+The service only talks to the interfaces in `ports.py`, so the tests run without Docker:
 
 ```bash
-pytest                       # 51 tests, no Docker required
-pytest --cov=app --cov-report=term-missing
+pytest
 ruff check .
 ```
-
-## Configuration
-
-Environment variables (see `.env.example`): `CANDIDATE_K` (per-retriever depth before
-fusion, default 100), `RERANK_DEPTH` (candidates scored by the cross-encoder, default 50),
-`RRF_K` (fusion damping, default 60), `EMBED_MODEL`, `RERANK_MODEL`, `CACHE_ENABLED`, plus
-connection strings.
